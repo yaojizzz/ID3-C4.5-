@@ -301,7 +301,7 @@ class ID3decisionTree:
                 number += self.countLeafNumber(node['child nodes'][key])
         return number
     
-    def export_graphviz(self, node: dict, label: str = '', parent: str = None) -> Digraph:
+    def export_graphviz(self, node: dict, label: str = '', parent: str = None, info_gain_dict: dict = None) -> Digraph:
         dot = Digraph()
         if 'child nodes' not in node:
             # 如果是叶子节点
@@ -311,12 +311,13 @@ class ID3decisionTree:
             # 如果是内部节点
             index_of_splitting_feature = node.get("index of splitting feature", "unknown")
             feature_name = self.feature_names[index_of_splitting_feature] if self.feature_names is not None else index_of_splitting_feature
-            info_gain = self.info_gain_dict.get(index_of_splitting_feature, "unknown")
+            info_gain = info_gain_dict.get(index_of_splitting_feature, "unknown") if info_gain_dict else "unknown"
             label = f'Feature: {feature_name}\nSamples: {node["number of samples"]}\nEntropy: {node["entropy"]:.2f}\nInfo Gain (IG): {"unknown" if info_gain == "unknown" else f"{float(info_gain):.2f}"}'
             for key in node['child nodes']:
                 child_node = node['child nodes'][key]
-                dot.edge(str(id(node)), str(id(child_node)), label=f'{feature_name} = {key}')
-                dot.subgraph(self.export_graphviz(child_node, label, parent=str(id(node))))
+                info_gain_label = f'IG: {"unknown" if info_gain == "unknown" else f"{float(info_gain):.2f}"}'
+                dot.edge(str(id(node)), str(id(child_node)), label=f'{feature_name} = {key}\n{info_gain_label}')
+                dot.subgraph(self.export_graphviz(child_node, label, parent=str(id(node)), info_gain_dict=info_gain_dict))
         return dot
 
     def predict(self, X__: ndarray) -> ndarray:
@@ -386,5 +387,5 @@ dot.render('/Users/yaoji/reins/论文相关/ID3decision_tree_before_pruning', fo
 model.pruning()
 
 # 可视化剪枝后的决策树
-dot = model.export_graphviz(model.tree)
+dot = model.export_graphviz(model.tree, info_gain_dict=model.info_gain_dict)
 dot.render('/Users/yaoji/reins/论文相关/ID3decision_tree_after_pruning', format='pdf', cleanup=True)
